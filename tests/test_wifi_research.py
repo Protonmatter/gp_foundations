@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
+from gp_foundations.kernels import MaternKernel
 from gp_foundations.multioutput import CoregionalizationMatrix
 from gp_foundations.wifi_research import JointStrategySimulator, ReplayEnvironment, StrategyObservation
 
@@ -124,6 +125,74 @@ class WifiResearchTests(unittest.TestCase):
         self.assertEqual(steps, [2, 4])
         self.assertEqual(simulator.updater.slow_updates, 2)
         self.assertGreater(simulator.hyperparameters_snapshot()['noise'], 1e-6)
+
+    def test_built_in_optimization_runs_on_schedule_and_updates_hyperparameters(self) -> None:
+        simulator = JointStrategySimulator(
+            ('strategy_a', 'strategy_b'),
+            [0.0, 0.25, 0.5, 0.75, 1.0],
+            kernel=MaternKernel(length_scale=0.9, variance=0.25),
+            coregionalization=CoregionalizationMatrix.identity(2),
+            noise=0.2,
+            slow_interval=2,
+            enable_built_in_optimization=True,
+            optimization_maxiter=25,
+        )
+        initial = simulator.hyperparameters_snapshot()
+        simulator.record_many(
+            [
+                StrategyObservation('strategy_a', 0.25, 0.7),
+                StrategyObservation('strategy_b', 0.25, 0.6),
+                StrategyObservation('strategy_a', 0.5, 1.0),
+                StrategyObservation('strategy_b', 0.5, 0.9),
+                StrategyObservation('strategy_a', 0.75, 0.6),
+            ]
+        )
+        updated = simulator.hyperparameters_snapshot()
+        self.assertEqual(simulator.updater.slow_updates, 2)
+        self.assertNotEqual(float(updated['kernel'].length_scale), float(initial['kernel'].length_scale))
+
+    def test_learning_improves_held_out_strategy_reward(self) -> None:
+        grid = np.linspace(0.0, 1.0, 11)
+
+        def reward_a(intensity: float) -> float:
+            return 1.0 - 2.4 * (intensity - 0.7) ** 2
+
+        def reward_b(intensity: float) -> float:
+            return 0.95 - 2.2 * (intensity - 0.7) ** 2
+
+        observations = [
+            StrategyObservation('strategy_a', 0.2, reward_a(0.2)),
+            StrategyObservation('strategy_b', 0.2, reward_b(0.2)),
+            StrategyObservation('strategy_a', 0.5, reward_a(0.5)),
+            StrategyObservation('strategy_a', 0.7, reward_a(0.7)),
+            StrategyObservation('strategy_a', 0.9, reward_a(0.9)),
+            StrategyObservation('strategy_b', 0.5, reward_b(0.5)),
+        ]
+
+        kwargs = {
+            'strategy_ids': ('strategy_a', 'strategy_b'),
+            'intensity_grid': grid,
+            'kernel': MaternKernel(length_scale=1.2, variance=0.25),
+            'coregionalization': CoregionalizationMatrix.identity(2),
+            'noise': 0.2,
+            'window_size': 20,
+        }
+        fixed = JointStrategySimulator(**kwargs)
+        learned = JointStrategySimulator(
+            **kwargs,
+            enable_built_in_optimization=True,
+            slow_interval=6,
+            optimization_maxiter=35,
+        )
+        fixed.record_many(observations)
+        learned.record_many(observations)
+
+        fixed_posterior = fixed.posterior_for_strategy('strategy_b')
+        learned_posterior = learned.posterior_for_strategy('strategy_b')
+        fixed_intensity = float(grid[int(np.argmax(fixed_posterior.mean))])
+        learned_intensity = float(grid[int(np.argmax(learned_posterior.mean))])
+
+        self.assertGreaterEqual(reward_b(learned_intensity), reward_b(fixed_intensity))
 
     def test_near_singular_joint_evaluation_remains_finite(self) -> None:
         coregionalization = CoregionalizationMatrix.from_factor(np.array([[1.0, 0.0], [0.999999, 1e-6]]))

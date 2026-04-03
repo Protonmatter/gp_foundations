@@ -1,6 +1,6 @@
 from .acquisition import expected_improvement, softmax_select, thompson_sample, upper_confidence_bound
 from .filters import KalmanFilter
-from .gp import GaussianProcessRegressor, PosteriorPrediction
+from .gp import GaussianProcessRegressor, OptimizationResult, PosteriorPrediction
 from .kernels import MaternKernel, SpectralMixtureKernel, TimeDecayKernel
 from .linalg import cholesky_factor, cholesky_solve, ensure_spd, stable_logdet
 from .multioutput import CoregionalizationMatrix, IntrinsicCoregionalizedGP
@@ -12,6 +12,7 @@ from .wifi_research import JointStrategySimulator, ReplayEnvironment, StrategyOb
 __all__ = [
     "GaussianProcessRegressor",
     "PosteriorPrediction",
+    "OptimizationResult",
     "MaternKernel",
     "SpectralMixtureKernel",
     "TimeDecayKernel",

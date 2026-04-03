@@ -145,6 +145,9 @@ class JointStrategySimulator:
         window_size: int = 100,
         slow_interval: int = 10,
         warmup: int = 0,
+        enable_built_in_optimization: bool = False,
+        optimization_maxiter: int = 50,
+        optimize_noise: bool = True,
         hyperparameter_update: Callable[[dict[str, list[StrategyObservation]], dict[str, Any], int], Mapping[str, Any] | CoregionalizationMatrix | None] | None = None,
     ):
         self.strategy_ids = _validate_strategy_ids(strategy_ids)
@@ -154,7 +157,12 @@ class JointStrategySimulator:
             raise ValueError("window_size must be positive")
         if noise < 0.0:
             raise ValueError("noise must be non-negative")
+        if optimization_maxiter <= 0:
+            raise ValueError("optimization_maxiter must be positive")
         self.window_size = int(window_size)
+        self.enable_built_in_optimization = bool(enable_built_in_optimization)
+        self.optimization_maxiter = int(optimization_maxiter)
+        self.optimize_noise = bool(optimize_noise)
         self._data_store: SnapshotStore[dict[str, list[StrategyObservation]]] = SnapshotStore(
             {strategy_id: [] for strategy_id in self.strategy_ids}
         )
@@ -277,11 +285,14 @@ class JointStrategySimulator:
         return {"steps": step}
 
     def _slow_update(self, state: dict[str, int], observation: StrategyObservation, step: int) -> dict[str, int]:
-        if self._hyperparameter_update is None:
-            return state
         histories = self.observations_snapshot()
         current = self.hyperparameters_snapshot()
-        updated = self._hyperparameter_update(histories, current, step)
+        if self._hyperparameter_update is not None:
+            updated = self._hyperparameter_update(histories, current, step)
+        elif self.enable_built_in_optimization:
+            updated = self._built_in_hyperparameter_update(histories, current)
+        else:
+            return state
         if updated is not None:
             self._hyperparameter_store.replace(self._normalize_hyperparameters(updated, current))
         return state
@@ -342,6 +353,28 @@ class JointStrategySimulator:
                 np.asarray(output_indices, dtype=int),
             )
         return model
+
+    def _built_in_hyperparameter_update(
+        self,
+        histories: dict[str, list[StrategyObservation]],
+        current: dict[str, Any],
+    ) -> Mapping[str, Any] | None:
+        total_observations = sum(len(records) for records in histories.values())
+        if total_observations < max(3, len(self.strategy_ids)):
+            return None
+
+        model = self._build_model(histories, current)
+        result = model.optimize_hyperparameters(
+            optimize_noise=self.optimize_noise,
+            maxiter=self.optimization_maxiter,
+        )
+        if not np.isfinite(result.objective):
+            return None
+        return {
+            "kernel": model.kernel,
+            "coregionalization": model.coregionalization,
+            "noise": model.noise,
+        }
 
     def _normalize_hyperparameters(
         self,

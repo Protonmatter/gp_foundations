@@ -13,6 +13,7 @@ This is an early-stage research toolkit. The repository is structured and tested
 Phase one implements:
 
 - Gaussian process regression with marginal likelihood evaluation
+- Opt-in hyperparameter learning for exact Matérn GP and multi-output GP models
 - Cholesky-based numerical helpers
 - Bayesian optimization acquisition functions
 - Intrinsic coregionalization for multi-output Gaussian processes

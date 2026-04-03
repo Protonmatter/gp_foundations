@@ -35,4 +35,6 @@ The repository also includes a safe offline WiFi research layer derived from leg
 
 - [10 WiFi Research Source Mapping](10_wifi_research_source_mapping.md)
 - [11 Offline WiFi Research Workflow](11_wifi_research_workflow.md)
+- [12 Trainable GP Models](12_trainable_gp_models.md)
 - [07 WiFi Research Simulation Notebook](../notebooks/07_wifi_research_simulation.ipynb)
+- [08 Trainable Models Notebook](../notebooks/08_trainable_models.ipynb)

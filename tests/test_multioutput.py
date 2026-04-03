@@ -54,6 +54,45 @@ class MultiOutputTests(unittest.TestCase):
         self.assertEqual(evaluation.posterior.variance.shape, (2, 2))
         self.assertEqual(evaluation.sample.shape, (2, 2))
 
+    def test_negative_log_marginal_likelihood_is_finite(self) -> None:
+        X = np.linspace(0.0, 1.0, 6)[:, None]
+        kernel = MaternKernel(length_scale=0.25, variance=1.1)
+        coreg = CoregionalizationMatrix.from_factor(np.array([[1.0, 0.0], [0.6, 0.4]]))
+        rng = np.random.default_rng(5)
+        Lx = np.linalg.cholesky(kernel(X, X) + 1e-8 * np.eye(X.shape[0]))
+        Z = rng.standard_normal((X.shape[0], 2))
+        Y = Lx @ Z @ coreg.factor.T + 0.03 * rng.standard_normal((X.shape[0], 2))
+
+        model = IntrinsicCoregionalizedGP(
+            MaternKernel(length_scale=0.9, variance=0.2),
+            CoregionalizationMatrix.identity(2),
+            noise=0.2,
+        ).fit(X, Y)
+        self.assertTrue(np.isfinite(model.negative_log_marginal_likelihood()))
+
+    def test_hyperparameter_optimization_recovers_positive_cross_output_structure(self) -> None:
+        X = np.linspace(0.0, 1.0, 8)[:, None]
+        true_kernel = MaternKernel(length_scale=0.2, variance=1.3)
+        true_coreg = CoregionalizationMatrix.from_factor(np.array([[1.0, 0.0], [0.7, 0.45]]))
+        rng = np.random.default_rng(6)
+        Lx = np.linalg.cholesky(true_kernel(X, X) + 1e-8 * np.eye(X.shape[0]))
+        Y = Lx @ rng.standard_normal((X.shape[0], 2)) @ true_coreg.factor.T
+        Y = Y + 0.02 * rng.standard_normal((X.shape[0], 2))
+
+        model = IntrinsicCoregionalizedGP(
+            MaternKernel(length_scale=0.85, variance=0.3),
+            CoregionalizationMatrix.identity(2),
+            noise=0.2,
+        ).fit(X, Y)
+        initial_objective = model.negative_log_marginal_likelihood()
+        result = model.optimize_hyperparameters(maxiter=70)
+
+        self.assertTrue(np.isfinite(result.objective))
+        self.assertLessEqual(result.objective, initial_objective + 1e-6)
+        eigenvalues = np.linalg.eigvalsh(model.coregionalization.matrix)
+        self.assertTrue(np.all(eigenvalues >= -1e-8))
+        self.assertGreater(model.coregionalization.matrix[0, 1], 0.05)
+
 
 if __name__ == '__main__':
     unittest.main()
