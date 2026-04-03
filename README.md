@@ -17,11 +17,13 @@ Phase one implements:
 - Bayesian optimization acquisition functions
 - Intrinsic coregionalization for multi-output Gaussian processes
 - Practical non-stationary kernels and a two-timescale update scheduler
+- Offline WiFi replay and simulation utilities built on the shared MOGP stack
 - Supporting Kalman, chaos, and concurrency utilities
 
 ## Layout
 
 - `src/gp_foundations/`: package code
+- `src/gp_foundations/wifi_research/`: offline replay and simulation layer
 - `tests/`: unit and smoke tests
 - `docs/`: curated Markdown documents derived from the PDFs
 - `notebooks/`: notebook walkthroughs that mirror the documents

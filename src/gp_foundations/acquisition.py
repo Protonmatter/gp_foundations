@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from scipy.stats import norm
 
-from .linalg import DEFAULT_JITTER
+from .linalg import DEFAULT_JITTER, ensure_spd
 
 
 def upper_confidence_bound(mean: np.ndarray, std: np.ndarray, beta: float = 2.0) -> np.ndarray:
@@ -32,8 +32,10 @@ def thompson_sample(
 ) -> np.ndarray:
     mean_array = np.asarray(mean, dtype=float)
     covariance_array = np.asarray(covariance, dtype=float)
+    if covariance_array.shape != (mean_array.size, mean_array.size):
+        raise ValueError("covariance must be square and match mean dimension")
     generator = rng or np.random.default_rng()
-    stabilized = covariance_array + DEFAULT_JITTER * np.eye(mean_array.size)
+    stabilized = ensure_spd(covariance_array, jitter=DEFAULT_JITTER)
     draws = generator.multivariate_normal(mean_array, stabilized, size=n_samples)
     return draws[0] if n_samples == 1 else draws
 

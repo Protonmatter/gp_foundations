@@ -19,6 +19,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[dev,plotting,notebooks]
+      - name: Enforce offline safety boundary
+        run: |
+          ! rg -n '(^|[^A-Za-z])(socket|subprocess|scapy|pyroute2|netifaces|pyric)([^A-Za-z]|$)' src/gp_foundations/wifi_research
       - name: Run tests
         run: python -m pytest -q
       - name: Execute notebooks

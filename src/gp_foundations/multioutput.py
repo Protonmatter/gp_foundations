@@ -15,6 +15,20 @@ class MultiOutputPosterior:
     covariance: np.ndarray | None = None
 
 
+@dataclass
+class OutputPosterior:
+    mean: np.ndarray
+    variance: np.ndarray
+    covariance: np.ndarray | None = None
+
+
+@dataclass
+class JointGridEvaluation:
+    points: np.ndarray
+    posterior: MultiOutputPosterior
+    sample: np.ndarray
+
+
 class CoregionalizationMatrix:
     def __init__(self, factor: np.ndarray):
         lower = np.asarray(factor, dtype=float)
@@ -156,6 +170,30 @@ class IntrinsicCoregionalizedGP:
     def predict(self, X: np.ndarray) -> np.ndarray:
         return self.posterior(X, return_covariance=False).mean
 
+    def posterior_for_output(
+        self,
+        X: np.ndarray,
+        output_index: int,
+        return_covariance: bool = False,
+    ) -> OutputPosterior:
+        if output_index < 0 or output_index >= self.coregionalization.n_outputs:
+            raise ValueError("output_index out of range")
+        X_test = np.asarray(X, dtype=float)
+        if X_test.ndim == 1:
+            X_test = X_test[:, None]
+        posterior = self.posterior(X_test, return_covariance=return_covariance)
+        covariance = None
+        if return_covariance and posterior.covariance is not None:
+            n_test = X_test.shape[0]
+            start = output_index * n_test
+            end = (output_index + 1) * n_test
+            covariance = posterior.covariance[start:end, start:end]
+        return OutputPosterior(
+            mean=posterior.mean[:, output_index],
+            variance=posterior.variance[:, output_index],
+            covariance=covariance,
+        )
+
     def joint_thompson_sample(
         self,
         X: np.ndarray,
@@ -176,3 +214,15 @@ class IntrinsicCoregionalizedGP:
             return np.asarray(draws, dtype=float).reshape(self.coregionalization.n_outputs, X_test.shape[0]).T
         stacked = np.asarray(draws, dtype=float)
         return stacked.reshape(n_samples, self.coregionalization.n_outputs, X_test.shape[0]).transpose(0, 2, 1)
+
+    def evaluate_grid(
+        self,
+        X: np.ndarray,
+        rng: np.random.Generator | None = None,
+    ) -> JointGridEvaluation:
+        X_test = np.asarray(X, dtype=float)
+        if X_test.ndim == 1:
+            X_test = X_test[:, None]
+        posterior = self.posterior(X_test, return_covariance=True)
+        sample = self.joint_thompson_sample(X_test, rng=rng)
+        return JointGridEvaluation(points=X_test, posterior=posterior, sample=sample)

@@ -28,3 +28,11 @@ The corpus forms a coherent stack:
 - Non-stationary kernels and two-timescale updates handle changing structure over time.
 - Kalman filtering and chaos utilities give lighter-weight state and sequence tools.
 - Concurrency patterns make the scientific runtime composable and testable.
+
+## Research addenda
+
+The repository also includes a safe offline WiFi research layer derived from legacy MOGP source material:
+
+- [10 WiFi Research Source Mapping](10_wifi_research_source_mapping.md)
+- [11 Offline WiFi Research Workflow](11_wifi_research_workflow.md)
+- [07 WiFi Research Simulation Notebook](../notebooks/07_wifi_research_simulation.ipynb)

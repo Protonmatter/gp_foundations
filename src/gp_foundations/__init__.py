@@ -7,6 +7,7 @@ from .multioutput import CoregionalizationMatrix, IntrinsicCoregionalizedGP
 from .runtime import ProducerConsumerQueue, QueueClosed, SnapshotStore, WorkerSignal
 from .systems import chaotic_timing_sequence, logistic_map
 from .updates import TwoTimescaleUpdater
+from .wifi_research import JointStrategySimulator, ReplayEnvironment, StrategyObservation, StrategyRecommendation
 
 __all__ = [
     "GaussianProcessRegressor",
@@ -32,6 +33,10 @@ __all__ = [
     "WorkerSignal",
     "ProducerConsumerQueue",
     "QueueClosed",
+    "StrategyObservation",
+    "StrategyRecommendation",
+    "ReplayEnvironment",
+    "JointStrategySimulator",
 ]
 
 __version__ = "0.1.0"
