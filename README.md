@@ -25,6 +25,7 @@ Phase one implements:
 
 - `src/gp_foundations/`: package code
 - `src/gp_foundations/wifi_research/`: offline replay and simulation layer
+- `benchmarks/`: fixed-vs-learned benchmarking scripts
 - `tests/`: unit and smoke tests
 - `docs/`: curated Markdown documents derived from the PDFs
 - `notebooks/`: notebook walkthroughs that mirror the documents
